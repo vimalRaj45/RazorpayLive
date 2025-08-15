@@ -15,7 +15,9 @@ const razorpay = new Razorpay({
   key_secret: 'yAsactzp9aueXEnOoNAgiKx8'
 });
 
+// ===========================
 // Create Order
+// ===========================
 app.post('/create-order', async (req, res) => {
   const { amount, currency } = req.body;
   if (!amount || amount <= 0) {
@@ -38,7 +40,9 @@ app.post('/create-order', async (req, res) => {
   }
 });
 
-// Verify Payment
+// ===========================
+// Verify Payment (standard flow)
+// ===========================
 app.post('/verify-payment', (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
@@ -57,12 +61,45 @@ app.post('/verify-payment', (req, res) => {
   }
 });
 
+// ===========================
+// Manual Verification by Transaction ID (fallback)
+// ===========================
+app.post('/verify-transaction', async (req, res) => {
+  const { paymentId } = req.body;
+
+  if (!paymentId) {
+    return res.status(400).json({ success: false, message: 'Payment ID is required' });
+  }
+
+  try {
+    const payment = await razorpay.payments.fetch(paymentId);
+
+    if (payment.status === 'captured') {
+      res.json({
+        success: true,
+        order_id: payment.order_id,
+        amount: payment.amount,
+        currency: payment.currency,
+        message: 'Payment verified successfully'
+      });
+    } else {
+      res.json({ success: false, message: `Payment status: ${payment.status}` });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ===========================
 // Serve index.html from root
+// ===========================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ===========================
 // Start server
+// ===========================
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
